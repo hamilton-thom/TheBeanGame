@@ -2,87 +2,15 @@
 -- of this project is to develop an AI for the Bean game in order to determine
 -- optimal strategies.
 
-import Data.List
 import Data.Maybe
 import Control.Monad (replicateM)
-import System.Random
 
-(|>) :: a -> (a -> b) -> b
-(|>) x f = f x
+import Utilities
+import Types
 
-(>>) :: (a -> b) -> (b -> c) -> (a -> c)
-(>>) f g = g . f
 
-data Card
-  = Cocoa
-  | Garden
-  | Red
-  | BlackEyed
-  | Soy
-  | Green
-  | StinkyG
-  | Chili
-  | Blue
-  | Wax
-  | Coffee
-  deriving (Show, Read, Eq)
 
-beanCounts :: [(Card, Int)]
-beanCounts = [ (Cocoa, 4)
-             , (Garden, 6)
-             , (Red, 8)
-             , (BlackEyed, 10)
-             , (Soy, 12)
-             , (Green, 14)
-             , (StinkyG, 16)
-             , (Chili, 18)
-             , (Blue, 20)
-             , (Wax, 22)
-             , (Coffee, 24)
-             ]
 
-baseDeck = concat repeatedBeans
-  where repeatedBeans = beanCounts |> map (\(b, n) -> replicate n b)
-
--- During the game each player will do through three phases.
--- In each phase they will always have some common options, these
--- are encapsulated in the 'AlwaysOptions' type.
-data AlwaysOptions = Quit | FinishTurn | Harvest Card | BuyBeanField
-  deriving (Show, Read, Eq)
-
-data PlantStatus = NothingPlanted | OnePlanted | TwoPlanted
-  deriving (Show, Read, Eq)
-
-data TurnStatus = InitialPlant | Discarding | MainTurn
-  deriving (Show, Read, Eq)
-
-data TurnStart = TS AlwaysOptions | TSPlant Card
-  deriving (Show, Read, Eq)
-
-data TurnDiscard = TD AlwaysOptions | Discard Card
-  deriving (Show, Read, Eq)
-
-data TurnMain = TM AlwaysOptions | TMPlant Card
-  deriving (Show, Read, Eq)
-
--- Each player has certain attributes that need to be kept track of
--- during the game.
-type Score = Int
-newtype Hand = Han [Card]
-
-newtype Field = Field [Maybe (Card, Int)]
-maxFields = 3
-
-data Player = Player Field Hand Score PlantStatus
-
--- The remaining cards in the deck.
-newtype Deck = Dec [Card]
--- The cards in the Middle.
-newtype Middle = Mid [(Card, Int)]
--- The discard pile.
-newtype Discard = Dis [Card]
-
-data GlobalState = Global Deck Middle Discard [Player]
 
 -- Helper function to determine if a player can plant a given card.
 -- Check if a.) there is a spare slot, and b.) in the case where there
@@ -128,23 +56,6 @@ validMainMove (Player (Field xs) hand score turnStatus) move =
     TM _            -> True
     TMPlant c       -> canPlant (Field xs) c
 
--- Now we want to start the game proper.
--- Need to go through the mechanics of a turn.
--- You're given a set of cards, and then have several options
--- which will recursively run until you reach the end of your turn,
--- all the while you're changing the "World" which is largely just your
--- player result.
-
-type PlayerID = Int
-
-nextPlayer nPlayers playerID =
-  if playerID == nPlayers then
-    1
-  else
-    playerID + 1
-
-type AllPlayers = [Player]
-
 plant :: Card -> Field -> Field
 plant c (Field xs) =
   if canPlant (Field xs) c == False
@@ -164,7 +75,7 @@ middleCards middle =
 
 addCard :: Middle -> Card -> Middle
 addCard middle c =
-  if length matchingCards = 0 then
+  if length matchingCards == 0 then
      (c, 1) : unmatchingCards
      else matchingCards ++ unmatchingCards
 
@@ -199,84 +110,20 @@ safeDraw Global
           (Dec deck)
           middle
           (Dis discard)
+          players
          n =
-  case deck of
-    [] -> safeDraw Global (Dec []) middle (Dis start)
-
-
-  where splitPos = length discard - 1
-        start, [end] = splitAt splotPos discard
-
-
+           ((Global (Dec remainingDeckCards) middle (Dis discard) players),
+           (deckDrawnCards ++ discardDrawnCards))
+  where nDeckCardsDrawn = min n (length deck)
+        deckDrawnCards = take nDeckCardsDrawn deck
+        remainingDeckCards = drop nDeckCardsDrawn deck
+        shuffledDiscard = makeDeck 1 discard
+        nDiscardCardsDrawn = n - nDeckCardsDrawn
+        discardDrawnCards = take nDiscardCardsDrawn shuffledDiscard
 
 drawMain :: GlobalState -> GlobalState
-drawMain (Global deck middle discard _) =
-
-  safeDraw |> addCards |> matchDraw discard
-
--- draw and then resolve the matching
-  where topThreeCards = safeDraw 3 deck
-
-  if deckLen >= n then
-    take n deck
-    else take deckLen deck ++ drop (discardLen - cardDifference) discard
-  where deckLen = length deck
-        discardLen = length discard
-        cardDifference = n - deckLen
-
-
-
-
-
-
-
-
-
-
-
-
-
-{-
-moveStart :: GlobalState ->   -- The global state of the game.
-             PlayerID ->      -- The ID of the player making the move.
-             TurnStart ->     -- The turn that they're trying to make.
-             GlobalState      -- The returned global state.
-moveStart gs pId ts =
-  if validStart player ts then
-     case ts of
-     | TSPlant c -> plant c
-
-  else gs
-
-
-  where
-    player = case gs of Global _ _ _ players -> players !! (pId - 1)
-    plantStatus = case player of Player _ _ _ ps -> ps
-
--}
-
-
-
-
-
-
-
-
--- Way down here we start the actual making of the deck and playing of the game.
-nCards :: Int
-nCards = length baseDeck
-
-makeFloats :: Int -> Int -> [Double]
-makeFloats n seed = take n (randoms g)
-  where g = mkStdGen seed
-
-makeOrderedRange:: Int -> Int -> [Int]
-makeOrderedRange n seed = map fst sortedFloats
-  where baseFloats = zip [1..n] (makeFloats n seed)
-        sortedFloats = baseFloats |> sortOn snd
-
-makeDeck :: Int -> [a] -> [a]
-makeDeck seed inputDeck = map snd orderedList
-  where ordering = makeOrderedRange (length inputDeck) seed
-        zippedList = zip ordering inputDeck
-        orderedList = sortOn fst zippedList
+drawMain (Global deck middle discard players) =
+  Global nDeck resultMiddle resultDiscard nPlayers
+  where ((Global nDeck nMid nDiscard nPlayers), topThreeCards) =
+          safeDraw (Global deck middle discard players) 3
+        (resultDiscard, resultMiddle) = matchDraw nDiscard nMid
