@@ -8,10 +8,6 @@ import Control.Monad (replicateM)
 import Utilities
 import Types
 
-
-
-
-
 -- Helper function to determine if a player can plant a given card.
 -- Check if a.) there is a spare slot, and b.) in the case where there
 -- is no spare slot, whether or not the card you're trying to plant

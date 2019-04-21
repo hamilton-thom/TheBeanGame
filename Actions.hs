@@ -25,3 +25,5 @@ game ends.
 
 -- Game ([Player], Deck)
 -- String = PlayerName
+
+playTurn :: Game -> Game
