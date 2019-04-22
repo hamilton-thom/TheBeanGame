@@ -1,5 +1,5 @@
 
-module Card
+module Cards
 ( Card,
   Deck(..),
   harvestCards,

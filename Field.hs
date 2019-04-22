@@ -5,9 +5,12 @@ module Field
   Field,
   initialField,
   upgradeField,
+  canHarvest,
   canPlant,
   plant
 )
+
+import Cards
 
 data Plot = Plot (Card, Int) | EmptyPlot
   deriving (Show, Eq)
@@ -29,8 +32,8 @@ fieldToList field =
     Field2 p1 p2 -> [p1, p2]
     Field3 p1 p2 p3 -> [p1, p2, p3]
 
-fieldContains :: Field -> Card -> Bool
-fieldContains field card =
+canHarvest :: Field -> Card -> Bool
+canHarvest field card =
   n > 0
   where
     n = field |>
@@ -42,15 +45,15 @@ fieldContains field card =
 initialField :: Field
 initialField = Field2 EmptyPlot EmptyPlot
 
-upgradeField :: Field -> Field
-upgradeField f =
+upgradeField :: Field -> Int -> (Field, Int)
+upgradeField f coins =
   case f of
-    Field3 _ _ _ -> f
-    Field2 p1 p2 -> Field3 p1 p2 EmptyPlot
+    Field3 _ _ _ -> (f, coins)
+    Field2 p1 p2 -> (Field3 p1 p2 EmptyPlot, coins - 3)
 
 canPlant :: Field -> Card -> Bool
 canPlant field card =
-  hasEmptyPlot field || fieldContains field card
+  hasEmptyPlot field || canHarvest field card
 
 plantInPlot :: Plot -> Card -> Int -> Plot
 plantInPlot EmptyPlot card n     = Plot (card, n)
@@ -70,10 +73,36 @@ plant field card n =
         else if plotContains p2 card then
            Field3 p1 (plantInPlot p2 card n) p3
            else Field3 p1 p2 (plantInPlot p3 card n)
-  else
+  else -- Field doesn't already contain the plot, but has an empty plot.
     case field of
       Field2 EmptyPlot p2 -> Field2 (plantInPlot EmptyPlot card n) p2
       Field2 p1 EmptyPlot -> Field2 p1 (plantInPlot EmptyPlot card n)
       Field3 EmptyPlot p2 p3 -> Field3 (plantInPlot EmptyPlot card n) p2 p3
       Field3 p1 EmptyPlot p3 -> Field3 p1 (plantInPlot EmptyPlot card n) p3
       Field3 p1 p2 EmptyPlot -> Field3 p1 p2 (plantInPlot EmptyPlot card n)
+
+
+-- Returns the resultant field, the number of coins gained
+-- and the cards which need to be added to the end of the
+-- discard pile.
+harvestField :: Field -> Card -> (Field, Int, Queue Card)
+harvestField field card =
+  case field of
+    Field2 f1@(Plot p1) f2@(Plot p2) ->
+      if plotContains f1 card then
+        let (newCoins, discards) = harvestCards p1 in
+        (Field2 EmptyPlot f2, newCoins, discards)
+      else
+        let (newCoins, discards) = harvestCards p2 in
+        (Field2 f1 EmptyPlot, newCoins, discards)
+
+    Field3 f1@(Plot p1) f2@(Plot p2) f3@(Plot p3) ->
+      if plotContains f1 card then
+        let (newCoins, discards) = harvestCards p1 in
+        (Field3 EmptyPlot f2 f3, newCoins, discards)
+      else if plotContains f2 card then
+        let (newCoins, discards) = harvestCards p2 in
+        (Field3 f1 EmptyPlot f3, newCoins, discards)
+      else
+        let (newCoins, discards) = harvestCards p3 in
+        (Field3 f1 f2 EmptyPlot, newCoins, discards)
