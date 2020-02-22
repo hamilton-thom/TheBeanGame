@@ -14,6 +14,7 @@ import Player
 data TurnOrder = TurnOrder { playerNames :: [String],
                              turnList :: [String],
                              currentPlayer :: String }
+  deriving (Show, Eq)
 
 buildTurnOrder :: [String] -> TurnOrder
 buildTurnOrder names =

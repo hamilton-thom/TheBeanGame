@@ -6,11 +6,14 @@ module Field
   initialField,
   upgradeField,
   canHarvest,
+  harvestField,
   canPlant,
   plant
-)
+) where
 
 import Cards
+import Queue
+import Utilities
 
 data Plot = Plot (Card, Int) | EmptyPlot
   deriving (Show, Eq)
@@ -61,18 +64,18 @@ plantInPlot (Plot (c, m)) card n = Plot (c, m + n)
 
 plant :: Field -> Card -> Int -> Field
 plant field card n =
-  if fieldContains field card then
+  if canHarvest field card then
     case field of
       Field2 p1 p2 ->
         if plotContains p1 card then
           Field2 (plantInPlot p1 card n) p2
           else Field2 p1 (plantInPlot p2 card n)
       Field3 p1 p2 p3 ->
-      if plotContains p1 card then
-        Field3 (plantInPlot p1 card n) p2 p3
-        else if plotContains p2 card then
-           Field3 p1 (plantInPlot p2 card n) p3
-           else Field3 p1 p2 (plantInPlot p3 card n)
+        if plotContains p1 card then
+          Field3 (plantInPlot p1 card n) p2 p3
+          else if plotContains p2 card then
+             Field3 p1 (plantInPlot p2 card n) p3
+             else Field3 p1 p2 (plantInPlot p3 card n)
   else -- Field doesn't already contain the plot, but has an empty plot.
     case field of
       Field2 EmptyPlot p2 -> Field2 (plantInPlot EmptyPlot card n) p2

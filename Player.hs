@@ -2,13 +2,15 @@
 
 module Player
 (
-  Player,
+  Player(..),
   initialisePlayer,
   playerCanPlant,
   playerCanHarvest
 ) where
 
+import Cards
 import Field
+import Queue
 
 data Player = Player { name :: String,
                        coins :: Int,
@@ -21,7 +23,7 @@ initialisePlayer :: String -> Player
 initialisePlayer s = Player { name = s,
                               coins = 0,
                               hand = emptyQueue,
-                              fields = Field2 EmptyPlot EmptyPlot,
+                              fields = initialField,
                               tradingArea = [] }
 
 playerCanPlant :: Player -> Card -> Bool

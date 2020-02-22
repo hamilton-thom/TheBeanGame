@@ -2,7 +2,7 @@
 
 module Game
 (
-  TurnStage(..),
+  
 ) where
 
 import Board
@@ -24,23 +24,26 @@ import Board
   -- Game ([Player], Deck)
   -- String = PlayerName
 
-  playTurn :: Game -> Game
-
 -- Just need to run through the stages of a turn for one player, then
 -- can iterate the player to the next player and repeat.
-
-
-
-
-
-data TurnStage = PlantHand | Negotiation | DrawCards
-
-data Turn = Turn (TurnStage, String)
+{-
+data TurnStage = PlantHand InitialPlant | Negotiation | DrawCards
 
 data InitialPlant = Plant1 Card | Plant2 Card Card
+
+data Negotiate = Offer [Card] | Accept String | Decline String
+
+runHarvestCards :: Board -> Card -> Board
+
+
+runPlantHand :: Board -> InitialPlant -> Board
+runPlantHand board initialPlant =
+  board
+
 
 runTurn :: Game -> String -> TurnStage -> Game
 
 runPlant :: Game -> String -> InitialPlant
 
 type Offer = [Card]
+-}

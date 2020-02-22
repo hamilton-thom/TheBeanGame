@@ -15,9 +15,10 @@ module Queue
 ) where
 
 data Queue a = Queue { inbox :: [a], outbox :: [a], size :: Int }
+  deriving (Show, Eq)
 
 emptyQueue :: Queue a
-emptyQueue = Queue { inbox = [] :: [a], outbox = [] :: [a], size = 0 }
+emptyQueue = Queue { inbox = [], outbox = [], size = 0 }
 
 push :: a -> Queue a -> Queue a
 push x (Queue inb outb size) = Queue (x:inb) outb (size + 1)
@@ -26,16 +27,16 @@ push x (Queue inb outb size) = Queue (x:inb) outb (size + 1)
 pushQueue :: Queue a -> Queue a -> Queue a
 pushQueue q1 q2 =
   case poppedElement of
-    | Nothing -> q2
-    | Just x  -> pushQueue q' (push x q2)
+    Nothing -> q2
+    Just x  -> pushQueue q' (push x q2)
   where
-    (poppedElement, q') = pop q
+    (poppedElement, q') = pop q1
 
 pop :: Queue a -> (Maybe a, Queue a)
 pop q =
   case top of
-    | Nothing -> (top, emptyQueue)
-    | Just e  -> (Just e, poppedQueue)
+    Nothing -> (top, emptyQueue)
+    Just e  -> (Just e, poppedQueue)
   where
     (top, q') = peek q
     poppedQueue = Queue (inbox q') (tail $ outbox q') (size q' - 1)
@@ -45,13 +46,13 @@ popN q n =
   if size q >= n then (Just unsafeQ, resultQ)
     else (Nothing, q)
   where
-    (unsafeQ, resultQ) = unsafePopN n
+    (unsafeQ, resultQ) = unsafePopN q n
 
 unsafePopN :: Queue a -> Int -> (Queue a, Queue a)
 unsafePopN q 0 = (emptyQueue, q)
-unsafePopN q n = (push nextQ x, q'')
+unsafePopN q n = (push x nextQ, q'')
   where
-    (x, q') = pop q
+    (Just x, q') = pop q
     (nextQ, q'') = unsafePopN q' (n - 1)
 
 peek :: Queue a -> (Maybe a, Queue a)
@@ -61,7 +62,7 @@ peek q@(Queue [] outb s) = (Just $ head outb, q)
 
 fromList :: [a] -> Queue a
 fromList [] = emptyQueue
-fromList (x:xs) = push x (buildQueue xs)
+fromList (x:xs) = push x (fromList xs)
 
 toList :: Queue a -> [a]
 toList (Queue inbx outbx _) = outbx ++ (reverse inbx)
